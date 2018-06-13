@@ -2,12 +2,11 @@ var socket = io.connect('http://localhost:3000');
 //var socket = io.connect('73.10.25.154:3000');
 
 var users = [];
+var tiles = [];
 var player;
 var config;
 
 var canvas = document.getElementById('canvas');
-canvas.width = 1500;//window.innerWidth;
-canvas.height = 600;//window.innerHeight;
 var c = canvas.getContext('2d');
 
 socket.on('connect', function() {
@@ -16,6 +15,9 @@ socket.on('connect', function() {
     socket.on('initialServerInfo', function(configServer, usersServer) {
         config = configServer;
         users = usersServer;
+        
+        canvas.width = config.width;
+        canvas.height = config.height;
     })
 
     socket.emit('client info', {
@@ -27,8 +29,9 @@ socket.on('connect', function() {
         animate();
     });
 
-    socket.on('updateUsers', function(usersServer) {
-        users = usersServer;
+    socket.on('serverData', function(data) {
+        users = data.users;
+        tiles = data.tiles;
     });
 
     socket.on('playerDisconnected', function(userList) {
@@ -43,47 +46,52 @@ function animate() {
     for(i in users) {
         var u = users[i];
         c.fillStyle = u.color;
-        c.fillRect(u.x, u.y, config.width, config.height);
+        c.fillRect(u.x, u.y, config.sideLength, config.sideLength);
     }
 
     c.strokeStyle = "#999999";
 
-    for(i = 0; i < 1500; i += config.width) {
+    for(i = 0; i < config.width; i += config.sideLength) {
         c.beginPath();
         c.moveTo(i, 0);
-        c.lineTo(i, 600);
+        c.lineTo(i, config.height);
         c.stroke();
     }
 
-    for(i = 0; i < 600; i += config.height) {
+    for(i = 0; i < config.height; i += config.sideLength) {
         c.beginPath();
         c.moveTo(0, i);
-        c.lineTo(1500, i);
+        c.lineTo(config.width, i);
         c.stroke();
     }
 }
 
 document.addEventListener('keydown', function(event) {
-    var direction;
+    var directionX;
+    var directionY;
 
     switch(event.code) {
         case 'KeyW':
-            direction = 'UP';
+            directionY = 'UP';
+            directionX = 'SAME';
             break;
         case 'KeyA':
-            direction = 'LEFT';
+            directionX = 'LEFT';
+            directionY = 'SAME';
             break;
         case 'KeyS':
-            direction = 'DOWN';
+            directionY = 'DOWN';
+            directionX = 'SAME';
             break;
         case 'KeyD':
-            direction = 'RIGHT';
+            directionX = 'RIGHT';
+            directionY = 'SAME';
             break;
         default:
-            direction = 'SAME';
+            directionX = 'SAME';
+            directionY = 'SAME';
     }
 
-    console.log(direction);
 
-    socket.emit("movement", direction);
+    socket.emit("movement", directionX, directionY);
 });
