@@ -1,5 +1,5 @@
 var socket = io.connect('http://localhost:3000');
-socket = io.connect('73.10.25.154:3000');
+//var socket = io.connect('73.10.25.154:3000');
 
 var users = [];
 var player;
@@ -45,6 +45,22 @@ function animate() {
         c.fillStyle = u.color;
         c.fillRect(u.x, u.y, config.width, config.height);
     }
+
+    c.strokeStyle = "#999999";
+
+    for(i = 0; i < 1500; i += config.width) {
+        c.beginPath();
+        c.moveTo(i, 0);
+        c.lineTo(i, 600);
+        c.stroke();
+    }
+
+    for(i = 0; i < 600; i += config.height) {
+        c.beginPath();
+        c.moveTo(0, i);
+        c.lineTo(1500, i);
+        c.stroke();
+    }
 }
 
 document.addEventListener('keydown', function(event) {
@@ -66,6 +82,8 @@ document.addEventListener('keydown', function(event) {
         default:
             direction = 'SAME';
     }
+
+    console.log(direction);
 
     socket.emit("movement", direction);
 });
