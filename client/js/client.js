@@ -2,7 +2,7 @@ var socket = io.connect('http://localhost:3000');
 //var socket = io.connect('73.10.25.154:3000');
 
 var users = [];
-var tiles = [];
+var food = [];
 var player;
 var config;
 
@@ -35,7 +35,7 @@ socket.on('connect', function() {
 
     socket.on('serverData', function(data) {
         users = data.users;
-        tiles = data.tiles;
+        food = data.food;
 
         for(i in users) {
             if(users[i].id == socket.id)
@@ -55,7 +55,12 @@ function animate() {
     for(i in users) {
         var u = users[i];
         c.fillStyle = u.color;
-        c.fillRect(u.x, u.y, config.sideLength, config.sideLength);
+
+        for(j in u.tiles) {
+            var t = u.tiles[j];
+
+            c.fillRect(t[0], t[1], config.sideLength, config.sideLength);
+        }
     }
 
     c.strokeStyle = "#999999";
@@ -74,21 +79,18 @@ function animate() {
         c.stroke();
     }
 
-    for(x in tiles) {
-        for(y in tiles[x]) {
-            var t = tiles[x][y];
+    for(i in food) {
+        var f = food[i];
 
-            c.fillStyle = hexToRgbA(t.color, 0.8);
-
-            c.fillRect(t2p(t).x, t2p(t).y, config.sideLength, config.sideLength);
-        }
+        c.fillStyle = '#FF0000'; //red
+        c.fillRect(t2p(f).x, t2p(f).y, config.sideLength, config.sideLength);
     }
 }
 
 function t2p(t) {
     return {
-        x: t.x * config.sideLength,
-        y: t.y * config.sideLength
+        x: t[0] * config.sideLength,
+        y: t[1] * config.sideLength
     };
 }
 
@@ -97,18 +99,22 @@ document.addEventListener('keydown', function(event) {
     var directionY;
 
     switch(event.code) {
+        case 'ArrowUp':
         case 'KeyW':
             directionY = 'UP';
             directionX = 'SAME';
             break;
+        case 'ArrowLeft':
         case 'KeyA':
             directionX = 'LEFT';
             directionY = 'SAME';
             break;
+        case 'ArrowDown':
         case 'KeyS':
             directionY = 'DOWN';
             directionX = 'SAME';
             break;
+        case 'ArrowRight':
         case 'KeyD':
             directionX = 'RIGHT';
             directionY = 'SAME';
@@ -133,4 +139,14 @@ function hexToRgbA(hex, alpha){ //copied from https://stackoverflow.com/question
         return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+',' + alpha + ')';
     }
     throw new Error('Bad Hex');
+}
+
+function getRandomColor() {
+    var color = '#';
+    var values = '0123456789ABCDEF';
+
+    for(i = 0; i < 6; i++)
+        color += values.charAt(Math.floor(Math.random() * 16));
+
+    return color;
 }
