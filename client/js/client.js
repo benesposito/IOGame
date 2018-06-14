@@ -15,7 +15,11 @@ socket.on('connect', function() {
     socket.on('initialServerInfo', function(configServer, usersServer) {
         config = configServer;
         users = usersServer;
-        
+
+        for(i in users)
+            if(users[i].id == socket.id)
+                player = users[i];
+
         canvas.width = config.width;
         canvas.height = config.height;
     })
@@ -32,6 +36,11 @@ socket.on('connect', function() {
     socket.on('serverData', function(data) {
         users = data.users;
         tiles = data.tiles;
+
+        for(i in users) {
+            if(users[i].id == socket.id)
+                player = users[i];
+        }
     });
 
     socket.on('playerDisconnected', function(userList) {
@@ -64,6 +73,23 @@ function animate() {
         c.lineTo(config.width, i);
         c.stroke();
     }
+
+    for(x in tiles) {
+        for(y in tiles[x]) {
+            var t = tiles[x][y];
+
+            c.fillStyle = hexToRgbA(t.color, 0.8);
+
+            c.fillRect(t2p(t).x, t2p(t).y, config.sideLength, config.sideLength);
+        }
+    }
+}
+
+function t2p(t) {
+    return {
+        x: t.x * config.sideLength,
+        y: t.y * config.sideLength
+    };
 }
 
 document.addEventListener('keydown', function(event) {
@@ -95,3 +121,16 @@ document.addEventListener('keydown', function(event) {
 
     socket.emit("movement", directionX, directionY);
 });
+
+function hexToRgbA(hex, alpha){ //copied from https://stackoverflow.com/questions/21646738/convert-hex-to-rgba, very slightly modified
+    var c;
+    if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+        c= hex.substring(1).split('');
+        if(c.length== 3){
+            c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+        }
+        c= '0x'+c.join('');
+        return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+',' + alpha + ')';
+    }
+    throw new Error('Bad Hex');
+}
