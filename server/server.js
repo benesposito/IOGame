@@ -48,10 +48,11 @@ io.on('connection', function(socket) {
             direction: 'DOWN',
             pendingX: 'NONE',
             pendingY: 'NONE',
-            path: []
+            path: [],
+            ownedTiles: []
         };
 
-        player.path = [
+        player.ownedTiles = [
                 [player.x - 1, player.y - 1],   [player.x, player.y - 1],   [player.x + 1, player.y - 1],
                 [player.x - 1, player.y],       [player.x, player.y],       [player.x + 1, player.y],
                 [player.x - 1, player.y + 1],   [player.x, player.y + 1],   [player.x + 1, player.y + 1]
