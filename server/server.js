@@ -6,13 +6,15 @@ var io = require('socket.io')(http);
 app.use(express.static(__dirname + '/../client'));
 
 var config = {
+    refreshRate: 16, //16
     sideLength: 20,
     speed: 4,
-    numXTiles: 60,
-    numYTiles: 40,
+    numXTiles: 80,
+    numYTiles: 45,
     get width() { return this.sideLength * this.numXTiles; },
     get height() { return this.sideLength * this.numYTiles; },
-    food: 8
+    food: 25,
+    get cycleLength() { return this.sideLength / this.speed; }
 };
 
 var users = [];
@@ -27,24 +29,32 @@ io.on('connection', function(socket) {
     socket.emit('initialServerInfo', config, users);
     var player;
 
-    socket.on('client info', function(data) {
-        var color = '#';
-        var values = '0123456789ABCDEF';
-
-        for(i = 0; i < 6; i++)
-            color += values.charAt(Math.floor(Math.random() * 16));
-
+    socket.on('client info', function(data) { //Eventually make this only define the things not defined in spawn(), and then call spawn(player)
         player = {
             id: socket.id,
             x: Math.floor(Math.random() * (config.width - config.sideLength) / config.sideLength) * config.sideLength,
             y: Math.floor(Math.random() * (config.height - config.sideLength) / config.sideLength) * config.sideLength,
+            get head() {
+                switch(this.direction) {
+                    case 'LEFT':
+                    case 'UP':
+                        return p2t(this.x, this.y);
+                    case 'RIGHT':
+                        return p2t(this.x + config.sideLength - config.speed, this.y);
+                    case 'DOWN':
+                        return p2t(this.x, this.y + config.sideLength - config.speed);
+                    default:
+                        return p2t(0, 0);
+                }
+             },
             screenWidth: data.screenWidth,
             screenHeight: data.screenHeight,
-            color: color,
+            color: getRandomColor(),
             direction: 'DOWN',
             pendingX: 'NONE',
             pendingY: 'NONE',
-            tiles: [[this.x, this.y]]
+            size: 3,
+            tiles: [p2t(this.x, this.y)]
         };
 
         users.push(player);
@@ -69,40 +79,32 @@ io.on('connection', function(socket) {
     });
 });
 
+var cycle = 0;
 var loop = setInterval(function() {
+
     for(i in users) {
         var u = users[i];
+        var prevHead = Object.assign({}, u.head);
 
         handleControls(u);
-        handleFoodAndMovement(u);
+        handleFood(u);
 
-        var head = p2t(u.x, u.y);
-
-        for(j in users) {
-            var u2 = users[j];
-
-            if(u === u2) {
-                for(tile = 0; tile < u2.tiles.length - 3 * config.speed; tile += 1) {
-                    if(tilesEqual(head, p2t(u2.tiles[tile][0], u2.tiles[tile][1])))
-                        kill(u);
-                }
-            } else {
-
-                for(tile = 0; tile < u2.tiles.length; tile += 1) {
-                    if(tilesEqual(head, p2t(u2.tiles[tile][0], u2.tiles[tile][1])))
-                        kill(u);
-                }
-            }
+        if(!tilesEqual(u.head, prevHead)) {
+            cycle = 0;
+            updatePosition(u);
         }
     }
 
     io.sockets.emit('serverData', {
         users: users,
-        food: food
+        food: food,
+        cycle: cycle
     });
-}, 50.0 / 3.0); //50.0 / 3.0
 
-function p2t(x, y) {
+    cycle++;
+}, config.refreshRate);
+
+function p2t(x, y) { //pixel to tile
     return {
         x: Math.floor(x / config.sideLength),
         y: Math.floor(y / config.sideLength)
@@ -151,26 +153,31 @@ function handleControls(u) {
     }
 }
 
-function handleFoodAndMovement(u) {
+function handleFood(u) {
     for(f in food) {
-        var pos = p2t(u.x, u.y);
-
-        if(arraysEqual([pos.x, pos.y], food[f])) {
+        if(tilesEqual(u.head, food[f])) {
             food.splice(f, 1);
             food.push(getRandomTile());
-
-            for(j = 0; j < config.sideLength / config.speed; j++)
-                u.tiles.unshift(u.tiles[0]);
+            u.size++;
         }
     }
+}
 
-    u.tiles.splice(0, 1);
+function updatePosition(u) {
+    u.tiles.splice(0, 1); //removes first element in the array, which represents the "tail"
 
-    u.tiles.push([u.x, u.y]);
+    if(u.tiles.length < u.size) {
+        u.tiles.unshift(u.tiles[0]);
+    }
+
+    u.tiles.push(u.head); //adds the "head" to the end of the array
 }
 
 function getRandomTile() {
-    return [Math.floor(Math.random() * config.width / config.sideLength), Math.floor(Math.random() * config.height / config.sideLength)]
+    return {
+        x: Math.floor(Math.random() * config.width / config.sideLength),
+        y: Math.floor(Math.random() * config.height / config.sideLength)
+    };
 }
 
 function arraysEqual(arr1, arr2) { //copied from https://stackoverflow.com/questions/4025893/how-to-check-identical-array-in-most-efficient-way
@@ -191,7 +198,7 @@ function tilesEqual(t1, t2) {
     return false;
 }
 
-function kill(u) {
+function spawn(u) {
     u.x = Math.floor(Math.random() * (config.width - config.sideLength) / config.sideLength) * config.sideLength;
     u.y = Math.floor(Math.random() * (config.height - config.sideLength) / config.sideLength) * config.sideLength;
     u.color = getRandomColor();

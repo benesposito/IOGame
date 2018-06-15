@@ -1,10 +1,11 @@
 var socket = io.connect('http://localhost:3000');
-//var socket = io.connect('73.10.25.154:3000');
+var socket = io.connect('73.10.25.154:3000');
 
 var users = [];
 var food = [];
 var player;
 var config;
+var cycle;
 
 var canvas = document.getElementById('canvas');
 var c = canvas.getContext('2d');
@@ -36,6 +37,7 @@ socket.on('connect', function() {
     socket.on('serverData', function(data) {
         users = data.users;
         food = data.food;
+        cycle = data.cycle;
 
         for(i in users) {
             if(users[i].id == socket.id)
@@ -52,17 +54,54 @@ function animate() {
     requestAnimationFrame(animate);
     c.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
+    for(i in food) {
+        var f = food[i];
+
+        c.fillStyle = '#FF0000'; //red
+        c.fillRect(t2p(f).x, t2p(f).y, config.sideLength, config.sideLength);
+    }
+
     for(i in users) {
         var u = users[i];
         c.fillStyle = u.color;
+        c.fillRect(u.x, u.y, config.sideLength, config.sideLength);
 
-        for(j in u.tiles) {
-            var t = u.tiles[j];
-
-            c.fillRect(t[0], t[1], config.sideLength, config.sideLength);
+        for(j = 1; j < u.tiles.length - 1; j++) {
+            var t = t2p(u.tiles[j]);
+            c.fillRect(t.x, t.y, config.sideLength, config.sideLength);
         }
+
+        if(u.tiles.length > 1) {
+            var t = t2p(u.tiles[0]);
+
+            var x1 = u.tiles[0].x,
+                x2 = u.tiles[1].x,
+                y1 = u.tiles[0].y,
+                y2 = u.tiles[1].y;
+
+            if(x1 - x2 == 1) //left
+                c.fillRect(t.x - cycle * config.speed, t.y, config.sideLength, config.sideLength);
+            else if(x1 - x2 == -1) //right
+                c.fillRect(t.x + cycle * config.speed, t.y, config.sideLength, config.sideLength);
+            else if(y1 - y2 == 1) //up
+                c.fillRect(t.x, t.y - cycle * config.speed, config.sideLength, config.sideLength);
+            else if(y1 - y2 == -1) //down
+                c.fillRect(t.x, t.y + cycle * config.speed, config.sideLength, config.sideLength);
+        }
+
+        /*//display outline around server side snake locations
+        for(j in u.tiles) {
+            var t = t2p(u.tiles[j]);
+            var temp = c.strokeStyle;
+            c.strokeStyle = '#00FF00';
+            c.rect(t.x, t.y, config.sideLength, config.sideLength);
+            c.stroke();
+            c.strokeStyle = temp;
+        }
+        //*/
     }
 
+    /*//grid lines
     c.strokeStyle = "#999999";
 
     for(i = 0; i < config.width; i += config.sideLength) {
@@ -77,20 +116,13 @@ function animate() {
         c.moveTo(0, i);
         c.lineTo(config.width, i);
         c.stroke();
-    }
-
-    for(i in food) {
-        var f = food[i];
-
-        c.fillStyle = '#FF0000'; //red
-        c.fillRect(t2p(f).x, t2p(f).y, config.sideLength, config.sideLength);
-    }
+    }*/
 }
 
 function t2p(t) {
     return {
-        x: t[0] * config.sideLength,
-        y: t[1] * config.sideLength
+        x: t.x * config.sideLength,
+        y: t.y * config.sideLength
     };
 }
 
