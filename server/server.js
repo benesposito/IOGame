@@ -13,8 +13,7 @@ var config = {
     numYTiles: 45,
     get width() { return this.sideLength * this.numXTiles; },
     get height() { return this.sideLength * this.numYTiles; },
-    food: 25,
-    get cycleLength() { return this.sideLength / this.speed; }
+    food: 25
 };
 
 var users = [];
@@ -53,8 +52,9 @@ io.on('connection', function(socket) {
             direction: 'DOWN',
             pendingX: 'NONE',
             pendingY: 'NONE',
-            size: 3,
-            tiles: [p2t(this.x, this.y)]
+            size: 1,
+            tiles: [p2t(this.x, this.y)],
+            cycle: 0
         };
 
         users.push(player);
@@ -64,9 +64,11 @@ io.on('connection', function(socket) {
 
     socket.on('movement', function(directionX, directionY) {
         if(directionX != 'SAME' && (player.direction != directionX || player.pendingY != 'NONE'))
-            player.pendingX = directionX;
+            if(!(player.direction == 'LEFT' && directionX == 'RIGHT') && !(player.direction == 'RIGHT' && directionX == 'LEFT'))
+                player.pendingX = directionX;
         if(directionY != 'SAME' && (player.direction != directionY || player.pendingX != 'NONE'))
-            player.pendingY = directionY;
+            if(!(player.direction == 'UP' && directionY == 'DOWN') && !(player.direction == 'DOWN' && directionY == 'UP' ))
+                player.pendingY = directionY;
     });
 
     socket.on('disconnect', function() {
@@ -79,7 +81,6 @@ io.on('connection', function(socket) {
     });
 });
 
-var cycle = 0;
 var loop = setInterval(function() {
 
     for(i in users) {
@@ -90,18 +91,50 @@ var loop = setInterval(function() {
         handleFood(u);
 
         if(!tilesEqual(u.head, prevHead)) {
-            cycle = 0;
+            u.cycle = 0;
             updatePosition(u);
         }
+
+killLoop: for(j in users) {
+            var u2 = users[j];
+
+            if(tilesEqual(u.head, u2.head) && u != u2) {
+                if(u.size > u2.size) {
+                    kill(u2, u);
+
+                } else if(u2.size > u.size) {
+                    kill(u, u2);
+                } else {
+                    spawn(u);
+                    spawn(u2);
+                }
+            }
+
+            for(t = u2.tiles.length - 1; t > 0; t--) {
+                if(tilesEqual(u.head, u2.tiles[t])) {
+                    if(u == u2) {
+                        if(t != u.tiles.length - 1) {
+                            spawn(u);
+                            continue killLoop;
+                        }
+
+                        continue;
+                    }
+
+                    kill(u, u2);
+                    continue killLoop;
+                }
+            }
+        }
+
+        u.cycle++;
     }
 
     io.sockets.emit('serverData', {
         users: users,
-        food: food,
-        cycle: cycle
+        food: food
     });
 
-    cycle++;
 }, config.refreshRate);
 
 function p2t(x, y) { //pixel to tile
@@ -198,6 +231,11 @@ function tilesEqual(t1, t2) {
     return false;
 }
 
+function kill(killee, killer) {
+    killer.size += Math.ceil(killee.size / 2.0);
+    spawn(killee);
+}
+
 function spawn(u) {
     u.x = Math.floor(Math.random() * (config.width - config.sideLength) / config.sideLength) * config.sideLength;
     u.y = Math.floor(Math.random() * (config.height - config.sideLength) / config.sideLength) * config.sideLength;
@@ -205,6 +243,7 @@ function spawn(u) {
     u.direction = 'DOWN';
     u.pendingX = 'NONE';
     u.pendingY = 'NONE';
+    u.size = 1;
     u.tiles = [[u.x, u.y]];
 }
 

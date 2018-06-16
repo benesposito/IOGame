@@ -5,7 +5,6 @@ var users = [];
 var food = [];
 var player;
 var config;
-var cycle;
 
 var canvas = document.getElementById('canvas');
 var c = canvas.getContext('2d');
@@ -37,7 +36,6 @@ socket.on('connect', function() {
     socket.on('serverData', function(data) {
         users = data.users;
         food = data.food;
-        cycle = data.cycle;
 
         for(i in users) {
             if(users[i].id == socket.id)
@@ -80,13 +78,13 @@ function animate() {
                 y2 = u.tiles[1].y;
 
             if(x1 - x2 == 1) //left
-                c.fillRect(t.x - cycle * config.speed, t.y, config.sideLength, config.sideLength);
+                c.fillRect(t.x - u.cycle * config.speed, t.y, config.sideLength, config.sideLength);
             else if(x1 - x2 == -1) //right
-                c.fillRect(t.x + cycle * config.speed, t.y, config.sideLength, config.sideLength);
+                c.fillRect(t.x + u.cycle * config.speed, t.y, config.sideLength, config.sideLength);
             else if(y1 - y2 == 1) //up
-                c.fillRect(t.x, t.y - cycle * config.speed, config.sideLength, config.sideLength);
+                c.fillRect(t.x, t.y - u.cycle * config.speed, config.sideLength, config.sideLength);
             else if(y1 - y2 == -1) //down
-                c.fillRect(t.x, t.y + cycle * config.speed, config.sideLength, config.sideLength);
+                c.fillRect(t.x, t.y + u.cycle * config.speed, config.sideLength, config.sideLength);
         }
 
         /*//display outline around server side snake locations
