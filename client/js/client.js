@@ -1,5 +1,4 @@
 var socket = io.connect('http://localhost:3000');
-//var socket = io.connect('73.10.25.154:3000');
 
 var users = [];
 var tiles = [];
